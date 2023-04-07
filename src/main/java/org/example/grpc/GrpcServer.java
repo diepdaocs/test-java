@@ -3,6 +3,7 @@ package org.example.grpc;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import org.example.grpc.hello.HelloService;
+import org.example.grpc.stream.StockService;
 
 import java.io.IOException;
 
@@ -11,7 +12,9 @@ public class GrpcServer {
         final int port = 8080;
         Server server = ServerBuilder
                 .forPort(port)
-                .addService(new HelloService()).build();
+                .addService(new HelloService())
+                .addService(new StockService())
+                .build();
 
         System.out.printf("Starting gPRC server at %s:%s%n", "localhost", port);
 
