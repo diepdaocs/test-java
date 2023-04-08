@@ -11,16 +11,14 @@ public class EventsClient {
 
     public EventsClient(ManagedChannel channel) {
         EventsServiceGrpc.EventsServiceStub stub = EventsServiceGrpc.newStub(channel);
-        streamObserver = stub.event(new EventsResponseObserver());
+        streamObserver = stub.event(new EventsResponseObserver(this));
     }
 
     public static void main(String[] args) {
         final ManagedChannel channel = makeChannel();
 
-        final EventsClient client = new EventsClient(channel);
-        testPubSub(client);
-//        final EventsClient client2 = new EventsClient(channel);
-//        testPubSub(client2);
+        testPubSub(new EventsClient(channel));
+//        testPubSub(new EventsClient(channel));
     }
 
     private static void testPubSub(EventsClient client) {
@@ -30,7 +28,7 @@ public class EventsClient {
             client.subscribe(context);
 
             // Fishing
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 300; i++) {
                 final String fishingPayload = payload + " [Fishing=%s]".formatted(i + 1);
                 System.out.printf("Publishing [payload=%s]%n", fishingPayload);
                 client.publish(context, fishingPayload);
@@ -39,6 +37,7 @@ public class EventsClient {
             Thread.sleep(TimeUnit.SECONDS.toMillis(5));
 
             client.unsubscribe(context);
+            client.close();
 
             Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         } catch (final Throwable t) {
@@ -79,7 +78,7 @@ public class EventsClient {
                 .build());
     }
 
-    private static void onEvent(final String context, final String payload) {
+    private void onEvent(final String context, final String payload) {
         System.out.printf("Event to be handled [context=%s, payload=%s]%n", context, payload);
     }
 
@@ -90,6 +89,12 @@ public class EventsClient {
     }
 
     private static class EventsResponseObserver implements io.grpc.stub.StreamObserver<EventResponse> {
+        private final EventsClient eventsClient;
+
+        public EventsResponseObserver(final EventsClient eventsClient) {
+            this.eventsClient = eventsClient;
+        }
+
         @Override
         public void onNext(EventResponse eventResponse) {
             switch (eventResponse.getResponseCase()) {
@@ -98,7 +103,7 @@ public class EventsClient {
                 case PUBLISHRESP -> System.out.println("Publish response [SUCCESS]");
                 case EVENT -> {
                     Event event = eventResponse.getEvent();
-                    onEvent(event.getContext(), event.getPayload());
+                    eventsClient.onEvent(event.getContext(), event.getPayload());
                 }
                 default -> {
                 }

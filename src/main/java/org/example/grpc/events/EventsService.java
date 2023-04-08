@@ -13,77 +13,7 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
 
     @Override
     public StreamObserver<EventRequest> event(StreamObserver<EventResponse> responseObserver) {
-        return new StreamObserver<>() {
-            @Override
-            public void onNext(EventRequest eventRequest) {
-                switch (eventRequest.getRequestCase()) {
-                    case SUBSCRIBEREQ -> {
-                        System.out.println("Subscribe request");
-                        try {
-                            subscribe(eventRequest.getSubscribeReq(), (context, payload) -> {
-                                System.out.println("Server stream event...");
-                                responseObserver.onNext(EventResponse.newBuilder()
-                                        .setEvent(Event.newBuilder()
-                                                .setContext(context)
-                                                .setPayload(payload)
-                                                .build())
-                                        .build());
-                            });
-                        } catch (Exception e) {
-                            System.out.println("Subscribe error");
-                            e.printStackTrace();
-                            responseObserver.onError(e);
-                        }
-                        responseObserver.onNext(EventResponse.newBuilder()
-                                .setSubscribeResp(SubscribeResponse.newBuilder()
-                                        .build())
-                                .build());
-                    }
-                    case UNSUBSCRIBEREQ -> {
-                        System.out.println("Unsubscribe request");
-                        try {
-                            unsubscribe(eventRequest.getUnsubscribeReq());
-                            responseObserver.onNext(EventResponse.newBuilder()
-                                    .setUnsubscribeResp(UnsubscribeResponse.newBuilder()
-                                            .build())
-                                    .build());
-                            responseObserver.onCompleted();
-                            System.out.println("------------------------------------------------------------------");
-                        } catch (Exception e) {
-                            responseObserver.onError(e);
-                        }
-                    }
-                    case PUBLISHREQ -> {
-                        System.out.println("Publish request");
-                        try {
-                            publish(eventRequest.getPublishReq());
-                        } catch (Exception e) {
-                            System.out.println("Publish error");
-                            e.printStackTrace();
-                            responseObserver.onError(e);
-                        }
-                        responseObserver.onNext(EventResponse.newBuilder()
-                                .setPublishResp(PublishResponse.newBuilder()
-                                        .build())
-                                .build());
-                    }
-                    default -> {
-                    }
-                }
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                System.out.println("Server onError");
-                t.printStackTrace();
-            }
-
-            @Override
-            public void onCompleted() {
-                System.out.println("Server onCompleted");
-                responseObserver.onCompleted();
-            }
-        };
+        return new EventsRequestObserver(responseObserver, messagingManager);
     }
 
     private void subscribe(SubscribeRequest subscribe, MessagingManager.Handler handler) throws Exception {
@@ -96,9 +26,90 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
         messagingManager.unsubscribe(context);
     }
 
-    private void publish(PublishRequest publish) {
+    private void publish(PublishRequest publish) throws Exception {
         final String context = publish.getContext();
         final String payload = publish.getPayload();
         messagingManager.publish(context, payload);
+    }
+
+    public static class EventsRequestObserver implements StreamObserver<EventRequest> {
+        private final StreamObserver<EventResponse> responseObserver;
+        private final EventsService eventsService;
+
+        public EventsRequestObserver(StreamObserver<EventResponse> responseObserver, MessagingManager messagingManager) {
+            this.responseObserver = responseObserver;
+            this.eventsService = new EventsService(messagingManager);
+        }
+
+        @Override
+        public void onNext(EventRequest eventRequest) {
+            switch (eventRequest.getRequestCase()) {
+                case SUBSCRIBEREQ -> {
+                    System.out.println("Subscribe request");
+                    try {
+                        eventsService.subscribe(eventRequest.getSubscribeReq(), (context, payload) -> {
+                            System.out.printf("Server stream event [context=%s, payload=%s, type=%s]%n", context, payload, payload.getClass());
+                            responseObserver.onNext(EventResponse.newBuilder()
+                                    .setEvent(Event.newBuilder()
+                                            .setContext(context)
+                                            .setPayload(payload)
+                                            .build())
+                                    .build());
+                        });
+                        responseObserver.onNext(EventResponse.newBuilder()
+                                .setSubscribeResp(SubscribeResponse.newBuilder()
+                                        .build())
+                                .build());
+                    } catch (Exception e) {
+                        System.out.println("Subscribe error");
+                        e.printStackTrace();
+                        responseObserver.onError(e);
+                    }
+                }
+                case UNSUBSCRIBEREQ -> {
+                    System.out.println("Unsubscribe request");
+                    try {
+                        eventsService.unsubscribe(eventRequest.getUnsubscribeReq());
+                        responseObserver.onNext(EventResponse.newBuilder()
+                                .setUnsubscribeResp(UnsubscribeResponse.newBuilder()
+                                        .build())
+                                .build());
+                    } catch (Exception e) {
+                        System.out.println("Unsubscribe error");
+                        responseObserver.onError(e);
+                    }
+                }
+                case PUBLISHREQ -> {
+                    System.out.println("Publish request");
+                    try {
+                        eventsService.publish(eventRequest.getPublishReq());
+                        responseObserver.onNext(EventResponse.newBuilder()
+                                .setPublishResp(PublishResponse.newBuilder()
+                                        .build())
+                                .build());
+                    } catch (Exception e) {
+                        System.out.println("Publish error");
+                        e.printStackTrace();
+                        responseObserver.onError(e);
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            System.out.println("Server onError");
+            t.printStackTrace();
+            System.out.println("------------------------------------------------------------------");
+        }
+
+        @Override
+        public void onCompleted() {
+            System.out.println("Server onCompleted");
+            responseObserver.onCompleted();
+            System.out.println("------------------------------------------------------------------");
+        }
     }
 }

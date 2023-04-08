@@ -9,5 +9,5 @@ public interface MessagingManager {
 
     void unsubscribe(final String context) throws Exception;
 
-    void publish(final String context, final String payload);
+    void publish(final String context, final String payload) throws Exception;
 }

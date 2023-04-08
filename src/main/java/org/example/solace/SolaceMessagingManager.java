@@ -5,7 +5,6 @@ import com.solace.messaging.config.SolaceProperties;
 import com.solace.messaging.config.profile.ConfigurationProfile;
 import com.solace.messaging.publisher.DirectMessagePublisher;
 import com.solace.messaging.publisher.OutboundMessage;
-import com.solace.messaging.publisher.OutboundMessageBuilder;
 import com.solace.messaging.receiver.DirectMessageReceiver;
 import com.solace.messaging.receiver.MessageReceiver;
 import com.solace.messaging.resources.Topic;
@@ -46,7 +45,7 @@ public class SolaceMessagingManager implements MessagingManager {
     }
 
     @Override
-    public void subscribe(String context, Handler handler) throws InterruptedException {
+    public void subscribe(String context, Handler handler) throws Exception {
         String topic = makeTopic(context);
         DirectMessageReceiver receiver = receiverByTopic.computeIfAbsent(topic, t -> messagingService
                 .createDirectMessageReceiverBuilder()
@@ -57,17 +56,18 @@ public class SolaceMessagingManager implements MessagingManager {
             handler.onEvent(context, inboundMessage.getPayloadAsString());
         };
         receiver.receiveAsync(messageHandler);
+        System.out.println("Subscribed to " + topic);
     }
 
     @Override
-    public void unsubscribe(String context) throws InterruptedException {
+    public void unsubscribe(String context) throws Exception {
         String topic = makeTopic(context);
-        receiverByTopic.get(topic).removeSubscription(TopicSubscription.of(topic));
-        receiverByTopic.remove(topic);
+        receiverByTopic.remove(topic).removeSubscription(TopicSubscription.of(topic));
+        System.out.println("Unsubscribed to " + topic);
     }
 
     @Override
-    public void publish(String context, String payload) {
+    public void publish(String context, String payload) throws Exception {
         OutboundMessage message = messagingService.messageBuilder()
                 .build(String.format(payload));
 
