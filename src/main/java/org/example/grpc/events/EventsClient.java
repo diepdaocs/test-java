@@ -18,6 +18,12 @@ public class EventsClient {
         final ManagedChannel channel = makeChannel();
 
         final EventsClient client = new EventsClient(channel);
+        testPubSub(client);
+//        final EventsClient client2 = new EventsClient(channel);
+//        testPubSub(client2);
+    }
+
+    private static void testPubSub(EventsClient client) {
         final String context = "Diep";
         final String payload = "You have won a million dollar prize!!!";
         try {
@@ -29,10 +35,12 @@ public class EventsClient {
                 System.out.printf("Publishing [payload=%s]%n", fishingPayload);
                 client.publish(context, fishingPayload);
             }
+
             Thread.sleep(TimeUnit.SECONDS.toMillis(5));
 
             client.unsubscribe(context);
-            client.close();
+
+            Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         } catch (final Throwable t) {
             client.error(t);
         }

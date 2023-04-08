@@ -20,12 +20,15 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
                     case SUBSCRIBEREQ -> {
                         System.out.println("Subscribe request");
                         try {
-                            subscribe(eventRequest.getSubscribeReq(), ((context, payload) -> responseObserver.onNext(EventResponse.newBuilder()
-                                    .setEvent(Event.newBuilder()
-                                            .setContext(context)
-                                            .setPayload(payload)
-                                            .build())
-                                    .build())));
+                            subscribe(eventRequest.getSubscribeReq(), (context, payload) -> {
+                                System.out.println("Server stream event...");
+                                responseObserver.onNext(EventResponse.newBuilder()
+                                        .setEvent(Event.newBuilder()
+                                                .setContext(context)
+                                                .setPayload(payload)
+                                                .build())
+                                        .build());
+                            });
                         } catch (Exception e) {
                             System.out.println("Subscribe error");
                             e.printStackTrace();
@@ -35,19 +38,20 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
                                 .setSubscribeResp(SubscribeResponse.newBuilder()
                                         .build())
                                 .build());
-
                     }
                     case UNSUBSCRIBEREQ -> {
                         System.out.println("Unsubscribe request");
                         try {
                             unsubscribe(eventRequest.getUnsubscribeReq());
+                            responseObserver.onNext(EventResponse.newBuilder()
+                                    .setUnsubscribeResp(UnsubscribeResponse.newBuilder()
+                                            .build())
+                                    .build());
+                            responseObserver.onCompleted();
+                            System.out.println("------------------------------------------------------------------");
                         } catch (Exception e) {
                             responseObserver.onError(e);
                         }
-                        responseObserver.onNext(EventResponse.newBuilder()
-                                .setUnsubscribeResp(UnsubscribeResponse.newBuilder()
-                                        .build())
-                                .build());
                     }
                     case PUBLISHREQ -> {
                         System.out.println("Publish request");
@@ -77,6 +81,7 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
             @Override
             public void onCompleted() {
                 System.out.println("Server onCompleted");
+                responseObserver.onCompleted();
             }
         };
     }

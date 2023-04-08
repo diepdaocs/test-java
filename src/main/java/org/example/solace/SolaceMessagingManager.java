@@ -21,7 +21,7 @@ public class SolaceMessagingManager implements MessagingManager {
     private static final String TOPIC_PREFIX = "solace/samples/";  // used as the topic "root"
     private MessagingService messagingService;
     private final DirectMessagePublisher publisher;
-    private Map<String, DirectMessageReceiver> receiverByTopic;
+    private final Map<String, DirectMessageReceiver> receiverByTopic;
 
     public SolaceMessagingManager() {
         connect();
@@ -48,7 +48,10 @@ public class SolaceMessagingManager implements MessagingManager {
     @Override
     public void subscribe(String context, Handler handler) throws InterruptedException {
         String topic = makeTopic(context);
-        DirectMessageReceiver receiver = receiverByTopic.computeIfAbsent(topic, t -> messagingService.createDirectMessageReceiverBuilder().build().start());
+        DirectMessageReceiver receiver = receiverByTopic.computeIfAbsent(topic, t -> messagingService
+                .createDirectMessageReceiverBuilder()
+                .build()
+                .start());
         receiver.addSubscription(TopicSubscription.of(topic));
         final MessageReceiver.MessageHandler messageHandler = (inboundMessage) -> {
             handler.onEvent(context, inboundMessage.getPayloadAsString());
