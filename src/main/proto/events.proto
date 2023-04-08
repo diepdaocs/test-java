@@ -1,0 +1,51 @@
+syntax = "proto3";
+option java_multiple_files = true;
+package org.example.grpc.events;
+
+service EventsService {
+  rpc event(stream EventRequest) returns (stream EventResponse);
+}
+
+message EventRequest {
+  oneof request {
+    SubscribeRequest subscribeReq = 1;
+    UnsubscribeRequest unsubscribeReq = 2;
+    PublishRequest publishReq = 3;
+  }
+}
+
+message EventResponse {
+  oneof response {
+    SubscribeResponse subscribeResp = 1;
+    UnsubscribeResponse unsubscribeResp = 2;
+    PublishResponse publishResp = 3;
+    Event event = 4;
+  }
+}
+
+message SubscribeRequest {
+  string context = 1;
+}
+
+message SubscribeResponse {
+}
+
+message UnsubscribeRequest {
+  string context = 1;
+}
+
+message UnsubscribeResponse {
+}
+
+message PublishRequest {
+  string context = 1;
+  string payload = 2;
+}
+
+message PublishResponse {
+}
+
+message Event {
+  string context = 1;
+  string payload = 2;
+}
