@@ -36,6 +36,8 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
         private final StreamObserver<EventResponse> responseObserver;
         private final EventsService eventsService;
 
+        private final Object lock = new Object();
+
         public EventsRequestObserver(StreamObserver<EventResponse> responseObserver, MessagingManager messagingManager) {
             this.responseObserver = responseObserver;
             this.eventsService = new EventsService(messagingManager);
@@ -49,14 +51,14 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
                     try {
                         eventsService.subscribe(eventRequest.getSubscribeReq(), (context, payload) -> {
                             System.out.printf("Server stream event [context=%s, payload=%s, type=%s]%n", context, payload, payload.getClass());
-                            responseObserver.onNext(EventResponse.newBuilder()
+                            safeResponse(EventResponse.newBuilder()
                                     .setEvent(Event.newBuilder()
                                             .setContext(context)
                                             .setPayload(payload)
                                             .build())
                                     .build());
                         });
-                        responseObserver.onNext(EventResponse.newBuilder()
+                        safeResponse(EventResponse.newBuilder()
                                 .setSubscribeResp(SubscribeResponse.newBuilder()
                                         .build())
                                 .build());
@@ -70,7 +72,7 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
                     System.out.println("Unsubscribe request");
                     try {
                         eventsService.unsubscribe(eventRequest.getUnsubscribeReq());
-                        responseObserver.onNext(EventResponse.newBuilder()
+                        safeResponse(EventResponse.newBuilder()
                                 .setUnsubscribeResp(UnsubscribeResponse.newBuilder()
                                         .build())
                                 .build());
@@ -83,7 +85,7 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
                     System.out.println("Publish request");
                     try {
                         eventsService.publish(eventRequest.getPublishReq());
-                        responseObserver.onNext(EventResponse.newBuilder()
+                        safeResponse(EventResponse.newBuilder()
                                 .setPublishResp(PublishResponse.newBuilder()
                                         .build())
                                 .build());
@@ -95,6 +97,12 @@ public class EventsService extends EventsServiceGrpc.EventsServiceImplBase {
                 }
                 default -> {
                 }
+            }
+        }
+
+        public void safeResponse(final EventResponse response) {
+            synchronized (lock) {
+                responseObserver.onNext(response);
             }
         }
 

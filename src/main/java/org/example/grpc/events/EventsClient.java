@@ -28,13 +28,13 @@ public class EventsClient {
             client.subscribe(context);
 
             // Fishing
-            for (int i = 0; i < 300; i++) {
+            for (int i = 0; i < 7000; i++) {
                 final String fishingPayload = payload + " [Fishing=%s]".formatted(i + 1);
                 System.out.printf("Publishing [payload=%s]%n", fishingPayload);
                 client.publish(context, fishingPayload);
             }
 
-            Thread.sleep(TimeUnit.SECONDS.toMillis(5));
+            Thread.sleep(TimeUnit.SECONDS.toMillis(10));
 
             client.unsubscribe(context);
             client.close();
